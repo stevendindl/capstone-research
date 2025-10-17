@@ -5,8 +5,7 @@ import { lightTheme, darkTheme } from '../constants/theme';
 import { WorkoutProvider } from '../contexts/workout-context';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme(); // 'light' or 'dark'
-  const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const theme = lightTheme; // default to light theme (no option to change to keep simple)
 
   return (
     <WorkoutProvider>
