@@ -3,7 +3,7 @@ name: Weekly Issue - Create (title = +6 days)
 on:
   schedule:
     # Every Monday at 21:15 UTC (4 hours more than EST)
-    - cron: '32 21 * * 1'
+    - cron: '35 21 * * 1'
   workflow_dispatch: # manual run with inputs
 
 permissions:
@@ -23,9 +23,6 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const core = require('@actions/core');
-            const { context, github } = require('@actions/github');
-
             const tz = process.env.WEEKLY_TIMEZONE || 'UTC';
             const startDateStr = (process.env.WEEKLY_START_DATE || '').trim();
             const endDateStr = (process.env.WEEKLY_END_DATE || '').trim();
