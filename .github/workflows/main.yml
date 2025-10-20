@@ -3,8 +3,7 @@ name: Weekly Issue - Create (title = +6 days)
 on:
   schedule:
     # Every Monday at 21:15 UTC (4 hours more than EST)
-    - cron: '8 22 * * 1'
-  workflow_dispatch: # manual run with inputs
+    - cron: '17 22 * * 1'
 
 permissions:
   issues: write
@@ -14,7 +13,7 @@ env:
   WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}  # IANA tz
   WEEKLY_START_DATE: ${{ secrets.WEEKLY_START_DATE || '2025-10-20' }} # optional inclusive YYYY-MM-DD
   WEEKLY_END_DATE: ${{ secrets.WEEKLY_END_DATE || '2025-11-20' }}     # optional inclusive YYYY-MM-DD
-  PROJECT_NUMBER: '9'  # project number (e.g., 1, 2, 3)
+  PROJECT_NUMBER: 9  # project number (e.g., 1, 2, 3)
 
 jobs:
   create:
