@@ -11,10 +11,10 @@ permissions:
 
 env:
   # OPTIONAL: set these as repository secrets or edit here
-  WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}  # IANA tz, e.g. "America/New_York"
+  WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}  # IANA tz
   WEEKLY_START_DATE: ${{ secrets.WEEKLY_START_DATE || '2025-10-20' }} # optional inclusive YYYY-MM-DD
   WEEKLY_END_DATE: ${{ secrets.WEEKLY_END_DATE || '2025-11-20' }}     # optional inclusive YYYY-MM-DD
-  PROJECT_NUMBER: ${{ secrets.PROJECT_NUMBER || '9' }}  # project number (e.g., 1, 2, 3)
+  PROJECT_NUMBER: '9'  # project number (e.g., 1, 2, 3)
 
 jobs:
   create:
