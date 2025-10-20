@@ -3,7 +3,7 @@ name: Weekly Issue - Create (title = +6 days)
 on:
   schedule:
     # Every Monday at 21:15 UTC (4 hours more than EST)
-    - cron: '49 21 * * 1'
+    - cron: '8 22 * * 1'
   workflow_dispatch: # manual run with inputs
 
 permissions:
@@ -14,6 +14,7 @@ env:
   WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}  # IANA tz, e.g. "America/New_York"
   WEEKLY_START_DATE: ${{ secrets.WEEKLY_START_DATE || '2025-10-20' }} # optional inclusive YYYY-MM-DD
   WEEKLY_END_DATE: ${{ secrets.WEEKLY_END_DATE || '2025-11-20' }}     # optional inclusive YYYY-MM-DD
+  PROJECT_NUMBER: ${{ secrets.PROJECT_NUMBER || '9' }}  # project number (e.g., 1, 2, 3)
 
 jobs:
   create:
@@ -101,5 +102,59 @@ jobs:
             });
 
             core.info(`Created issue #${created.data.number}: ${created.data.html_url}`);
+             // Add to project board if PROJECT_NUMBER is set
+            if (projectNumber) {
+              try {
+                core.info(`Adding issue to project ${projectNumber}...`);
+                
+                // Get the project ID using GraphQL
+                const projectQuery = `
+                  query($owner: String!, $number: Int!) {
+                    user(login: $owner) {
+                      projectV2(number: $number) {
+                        id
+                      }
+                    }
+                    organization(login: $owner) {
+                      projectV2(number: $number) {
+                        id
+                      }
+                    }
+                  }
+                `;
+
+                const projectResult = await github.graphql(projectQuery, {
+                  owner: context.repo.owner,
+                  number: projectNumber
+                });
+
+                const projectId = projectResult.user?.projectV2?.id || projectResult.organization?.projectV2?.id;
+
+                if (!projectId) {
+                  core.warning(`Could not find project ${projectNumber} for ${context.repo.owner}`);
+                  return;
+                }
+
+                // Add the issue to the project
+                const addItemMutation = `
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                      item {
+                        id
+                      }
+                    }
+                  }
+                `;
+
+                await github.graphql(addItemMutation, {
+                  projectId: projectId,
+                  contentId: created.data.node_id
+                });
+
+                core.info(`Successfully added issue to project ${projectNumber}`);
+              } catch (error) {
+                core.warning(`Failed to add issue to project: ${error.message}`);
+              }
+            }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
