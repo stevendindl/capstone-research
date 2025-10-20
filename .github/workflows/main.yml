@@ -5,6 +5,8 @@ on:
     # Every Monday at 21:15 UTC (4 hours more than EST)
     - cron: '17 22 * * 1'
 
+  workflow_dispatch: # manual run option
+
 permissions:
   issues: write
 
