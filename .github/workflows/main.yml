@@ -1,0 +1,108 @@
+name: Weekly Issue - Create (title = +6 days)
+
+on:
+  schedule:
+    # Every Monday at 21:15 UTC (4 hours more than EST)
+    - cron: '15 21 * * 1'
+  workflow_dispatch: # manual run with inputs
+
+permissions:
+  issues: write
+
+env:
+  # OPTIONAL: set these as repository secrets or edit here
+  WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}  # IANA tz, e.g. "America/New_York"
+  WEEKLY_START_DATE: ${{ secrets.WEEKLY_START_DATE || '' }} # optional inclusive YYYY-MM-DD
+  WEEKLY_END_DATE: ${{ secrets.WEEKLY_END_DATE || '' }}     # optional inclusive YYYY-MM-DD
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create weekly issue (idempotent)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const core = require('@actions/core');
+            const { context, github } = require('@actions/github');
+
+            const tz = process.env.WEEKLY_TIMEZONE || 'UTC';
+            const startDateStr = (process.env.WEEKLY_START_DATE || '').trim();
+            const endDateStr = (process.env.WEEKLY_END_DATE || '').trim();
+
+            // compute "now" in timezone, and "futureDate" = now + 6 days
+            const now = new Date();
+            // shift to the timezone by formatting and re-parsing (keeps simple)
+            const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+            const parts = fmt.formatToParts(now).reduce((acc,p)=>{ if(p.type!=='literal') acc[p.type]=p.value; return acc; }, {});
+            const localToday = new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00Z`);
+
+            const FUTURE_MS = localToday.getTime() + 6 * 24 * 60 * 60 * 1000;
+            const future = new Date(FUTURE_MS);
+
+            // Format future as YYYY-MM-DD and optionally weekday
+            function ymd(d){
+              return d.toISOString().slice(0,10);
+            }
+            function ymdWithWeekday(d){
+              const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d);
+              return `${ymd(d)} (${weekday})`;
+            }
+
+            const futureStr = ymd(future);
+            const title = `Weekly - ${futureStr}`;
+            const body = `## Weekly Issue — ${futureStr}\n\nThis issue was created on ${ymd(localToday)} (timezone: ${tz}) and is scheduled to auto-close in 6 days.\n\n- TODO: add notes\n`;
+
+            core.info(`Timezone: ${tz}`);
+            core.info(`Local today: ${ymd(localToday)}`);
+            core.info(`Future date (title): ${futureStr}`);
+
+            // If a start/end range is configured, ensure future date is within [start, end]
+            function toEpoch(dstr){
+              // dstr format YYYY-MM-DD
+              return Math.floor(new Date(dstr + 'T00:00:00Z').getTime()/1000);
+            }
+
+            if (startDateStr) {
+              const sEpoch = toEpoch(startDateStr);
+              const futureEpoch = Math.floor(future.getTime()/1000);
+              if (futureEpoch < sEpoch) {
+                core.info(`Future date ${futureStr} is before WEEKLY_START_DATE ${startDateStr} — not creating.`);
+                return;
+              }
+            }
+            if (endDateStr) {
+              const eEpoch = toEpoch(endDateStr);
+              const futureEpoch = Math.floor(future.getTime()/1000);
+              if (futureEpoch > (eEpoch + 24*60*60 - 1)) { // allow inclusive end date
+                core.info(`Future date ${futureStr} is after WEEKLY_END_DATE ${endDateStr} — not creating.`);
+                return;
+              }
+            }
+
+            // Check for an existing open issue with the same title (avoid duplicates)
+            const listRes = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const exists = listRes.data.some(i => i.title === title);
+            if (exists) {
+              core.info(`Issue with title "${title}" already exists. Skipping creation.`);
+              return;
+            }
+
+            // Create the issue and add a label that will identify it for auto-closing
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['weekly', 'auto-close']
+            });
+
+            core.info(`Created issue #${created.data.number}: ${created.data.html_url}`);
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
