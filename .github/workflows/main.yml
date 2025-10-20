@@ -3,7 +3,7 @@ name: Weekly Issue - Create (title = +6 days)
 on:
   schedule:
     # Every Monday at 21:15 UTC (4 hours more than EST)
-    - cron: '35 21 * * 1'
+    - cron: '49 21 * * 1'
   workflow_dispatch: # manual run with inputs
 
 permissions:
@@ -13,7 +13,7 @@ env:
   # OPTIONAL: set these as repository secrets or edit here
   WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}  # IANA tz, e.g. "America/New_York"
   WEEKLY_START_DATE: ${{ secrets.WEEKLY_START_DATE || '2025-10-20' }} # optional inclusive YYYY-MM-DD
-  WEEKLY_END_DATE: ${{ secrets.WEEKLY_END_DATE || '2025-20-20' }}     # optional inclusive YYYY-MM-DD
+  WEEKLY_END_DATE: ${{ secrets.WEEKLY_END_DATE || '2025-11-20' }}     # optional inclusive YYYY-MM-DD
 
 jobs:
   create:
