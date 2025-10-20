@@ -1,0 +1,67 @@
+name: Weekly Issue - Auto Close (6 days)
+
+on:
+  schedule:
+    # runs every day at 04:00 UTC - adjust as needed
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  close_old:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issues older than 6 days with label "auto-close"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const core = require('@actions/core');
+            const { context, github } = require('@actions/github');
+
+            const tz = process.env.WEEKLY_TIMEZONE || 'UTC';
+            core.info(`Using timezone: ${tz}`);
+
+            // Get all open issues with label "auto-close" (paginate)
+            const per_page = 100;
+            let page = 1;
+            const candidates = [];
+
+            while (true) {
+              const res = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'auto-close',
+                per_page,
+                page
+              });
+              if (res.data.length === 0) break;
+              candidates.push(...res.data);
+              if (res.data.length < per_page) break;
+              page++;
+            }
+
+            core.info(`Found ${candidates.length} open issues with label 'auto-close'.`);
+
+            const now = new Date();
+            const cutoffMs = now.getTime() - 6 * 24 * 60 * 60 * 1000; // created_at <= cutoff => close
+
+            for (const issue of candidates) {
+              const createdAt = new Date(issue.created_at);
+              if (createdAt.getTime() <= cutoffMs) {
+                core.info(`Closing issue #${issue.number} created ${issue.created_at}`);
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+              } else {
+                core.info(`Issue #${issue.number} is not old enough (created ${issue.created_at})`);
+              }
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEEKLY_TIMEZONE: ${{ secrets.WEEKLY_TIMEZONE || 'UTC' }}
